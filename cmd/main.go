@@ -11,10 +11,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	todo "example.com/mod"
-	"example.com/mod/pkg/handler"
-	"example.com/mod/pkg/repository"
-	"example.com/mod/pkg/service"
+	todo "github.com/Demon/backend-GO"
+	"github.com/Demon/backend-GO/pkg/handler"
+	"github.com/Demon/backend-GO/pkg/repository"
+	"github.com/Demon/backend-GO/pkg/service"
 )
 
 func main() {

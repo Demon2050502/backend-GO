@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"example.com/mod/pkg/service"
+	"github.com/Demon/backend-GO/pkg/service"
 	"github.com/gin-gonic/gin"
 )
 
