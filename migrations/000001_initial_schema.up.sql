@@ -1,0 +1,166 @@
+-- 000001_initial_schema.up.sql
+CREATE TYPE order_status AS ENUM ('draft','open','in_progress','completed','canceled','disputed');
+CREATE TYPE bid_status AS ENUM ('pending','accepted','rejected');
+CREATE TYPE transaction_status AS ENUM ('pending','completed','failed','refunded');
+CREATE TYPE notification_type AS ENUM ('info','warning','success','danger');
+
+CREATE TABLE IF NOT EXISTS user_types (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  permissions JSONB
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  parent_id INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  firstname VARCHAR(100) NOT NULL,
+  lastname VARCHAR(100) NOT NULL,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  phone VARCHAR(50),
+  password_hash VARCHAR(255) NOT NULL,
+  avatar_url TEXT,
+  bio TEXT,
+  rating NUMERIC(3,2) DEFAULT 0.00,
+  balance NUMERIC(12,2) DEFAULT 0.00,
+  type_id INTEGER NOT NULL REFERENCES user_types(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  last_login TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  status order_status DEFAULT 'draft',
+  client_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  price NUMERIC(12,2) NOT NULL,
+  price_max NUMERIC(12,2) NOT NULL,
+  time_start TIMESTAMPTZ NOT NULL,
+  time_end TIMESTAMPTZ NOT NULL,
+  is_visible BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS portfolios (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  is_public BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS portfolio_files (
+  id SERIAL PRIMARY KEY,
+  portfolio_id INTEGER NOT NULL REFERENCES portfolios(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_type VARCHAR(50),
+  title VARCHAR(255),
+  description TEXT,
+  uploaded_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS order_tags (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  tag VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS order_bids (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  executor_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  portfolio_id INTEGER NOT NULL REFERENCES portfolios(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  proposal TEXT,
+  price NUMERIC(12,2) NOT NULL,
+  status bid_status DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  title VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_participants (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  joined_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  content TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  sent_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  from_user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  to_user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  amount NUMERIC(12,2) NOT NULL,
+  status transaction_status DEFAULT 'pending',
+  fee NUMERIC(12,2) DEFAULT 0.00,
+  processed_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  author_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  target_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  rating SMALLINT CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_skills (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  skill VARCHAR(100) NOT NULL,
+  proficiency_level SMALLINT CHECK (proficiency_level BETWEEN 1 AND 5)
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  type notification_type,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  related_entity_type VARCHAR(50),
+  related_entity_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id SERIAL PRIMARY KEY,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_name VARCHAR(255),
+  file_type VARCHAR(50),
+  uploaded_by INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  uploaded_at TIMESTAMPTZ DEFAULT now()
+);
