@@ -1,29 +1,27 @@
 package repository
 
 import (
+	"context"
+
+	"github.com/Demon/backend-GO/pkg/models"
 	"github.com/jmoiron/sqlx"
 )
 
-type Authorization interface {
+type AuthRepository interface {
+	CreateUser(ctx context.Context, u *models.User) (int64, error)
+	GetByUsername(ctx context.Context, username string) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	GetByIdentifier(ctx context.Context, identifier string) (*models.User, error)
+	UpdateLastLogin(ctx context.Context, userID int64) error
+}
+
+type Repositories struct {
+	AuthRepository
 
 }
 
-type TodoList interface {
-
-}
-
-type TodoItem interface {
-
-}
-
-type Repository struct {
-	Authorization
-	TodoList
-	TodoItem
-}
-
-func NewRepository(db *sqlx.DB) *Repository {
-	return &Repository{
-
+func NewRepositories(db *sqlx.DB) *Repositories {
+	return &Repositories{
+		AuthRepository: NewAuthRepository(db),
 	}
 }

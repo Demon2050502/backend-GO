@@ -164,3 +164,7 @@ CREATE TABLE IF NOT EXISTS attachments (
   uploaded_by INTEGER NOT NULL REFERENCES users(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
   uploaded_at TIMESTAMPTZ DEFAULT now()
 );
+
+INSERT INTO user_types (id, name, permissions)
+VALUES (1, 'default', 'Default user type')
+ON CONFLICT (id) DO NOTHING;

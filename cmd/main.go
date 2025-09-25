@@ -40,7 +40,7 @@ func main() {
 		logrus.Fatalf("failed to init DB: %s", err.Error())
 	}
 
-	repos := repository.NewRepository(db)
+	repos := repository.NewRepositories(db)
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(services)
 	
