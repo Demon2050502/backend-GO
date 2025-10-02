@@ -11,10 +11,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	todo "github.com/Demon/backend-GO"
-	"github.com/Demon/backend-GO/pkg/handler"
-	"github.com/Demon/backend-GO/pkg/repository"
-	"github.com/Demon/backend-GO/pkg/service"
+	server "github.com/Demon/backend-GO"
+	handler "github.com/Demon/backend-GO/pkg/handler"
+	mp "github.com/Demon/backend-GO/pkg/handler/main_paths"
+	postgres "github.com/Demon/backend-GO/pkg/postgres"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		logrus.Fatalf("error loading env variable: %s", err.Error())
 	}
 
-	db, err := repository.NewPostgresDB(repository.Config{
+	db, err := postgres.NewPostgresDB(postgres.Config{
 		Host: viper.GetString("db.host"),
 		Port: viper.GetString("db.port"),
 		Username: viper.GetString("db.username"),
@@ -40,11 +40,10 @@ func main() {
 		logrus.Fatalf("failed to init DB: %s", err.Error())
 	}
 
-	repos := repository.NewRepositories(db)
-	services := service.NewService(repos)
-	handlers := handler.NewHandler(services)
+	main_paths := mp.NewMainPaths(db)
+	handlers := handler.NewHandler(main_paths, db)
 	
-	srv := new(todo.Server)
+	srv := new(server.Server)
 	go func () {
 		if err := srv.Run(viper.GetString("port"), handlers.InitRoutes()); err != nil {
 			logrus.Fatalf("error running http server: %s", err.Error())

@@ -1,31 +1,65 @@
 package handler
 
 import (
-	"github.com/Demon/backend-GO/pkg/service"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
+
+	mp "github.com/Demon/backend-GO/pkg/handler/main_paths"
 )
 
+
 type Handler struct {
-	auth *service.Services
+	MainHandler *mp.MainHandler
+	db *sqlx.DB
 }
 
-func NewHandler(auth *service.Services) *Handler {
-	return &Handler{auth: auth}
+func NewHandler(MainHandler *mp.MainHandler, db *sqlx.DB) *Handler {
+	return &Handler{
+		MainHandler: MainHandler,
+		db : db,
+	}
 }
 
-func (h *Handler) InitRoutes() *gin.Engine {
+
+func (h *Handler)InitRoutes() *gin.Engine {
 	router := gin.New()
 
 	auth := router.Group("/auth")
 	{
-		auth.POST("/sign-up", h.SignUp)
-		auth.POST("/sign-in", h.SignIn)
+		auth.POST("/sign-up", h.MainHandler.Authorization.SignUp)
+		auth.POST("/sign-in", responce)
+	}
+
+	test := router.Group("/test")
+	{
+		test.POST("/status", responce)
+		test.POST("/count", h.getUserCount)
 	}
 
 	return router
 }
 
+func responce(c *gin.Context) {
+	c.JSON(200, gin.H{"ok": true})
+}
 
-// func responce(c *gin.Context) {
-//     c.JSON(200, gin.H{"ok": true})
-// }
+func (h *Handler) getUserCount(c *gin.Context) {
+	var count int
+
+
+	err := h.db.Get(&count, "SELECT COUNT(*) FROM users")
+	
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Не удалось получить количество пользователей",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"ok":    true,
+		"count": count,
+	})
+}

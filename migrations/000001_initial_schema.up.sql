@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   bio TEXT,
   rating NUMERIC(3,2) DEFAULT 0.00,
   balance NUMERIC(12,2) DEFAULT 0.00,
-  type_id INTEGER NOT NULL REFERENCES user_types(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  type_id INTEGER DEFAULT 0 REFERENCES user_types(id) ON UPDATE NO ACTION ON DELETE NO ACTION,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
@@ -165,6 +165,5 @@ CREATE TABLE IF NOT EXISTS attachments (
   uploaded_at TIMESTAMPTZ DEFAULT now()
 );
 
-INSERT INTO user_types (id, name, permissions)
-VALUES (1, 'default', 'Default user type')
-ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO user_types (id, name) VALUES (0, 'zero-type');
