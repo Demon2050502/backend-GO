@@ -1,19 +1,39 @@
 # Web-Applications
 
-Запуск мигррации
+# Показать помощь
 
-docker rm -f todo-db  
+make help
 
-docker run --name=todo-db \
- -e POSTGRES_PASSWORD='1' \
- -e POSTGRES_DB='backand_GO' \
- -p 5436:5432 -d --rm postgres
+# Запустить базу данных
 
-migrate -path ./migrations -database "postgres://postgres:1@localhost:5436/backand_GO?sslmode=disable" up
+make db-start
 
-go run cmd/main.go
+# Остановить базу данных
 
-http://localhost:8000/auth/sign-up
+make db-stop
+
+# Запустить миграции
+
+make migrate-up
+
+# Запустить приложение
+
+make run
+
+# Полный цикл разработки: запуск БД, миграции, приложение
+
+make dev
+
+# Сборка приложения
+
+make build
+
+# Полный сброс
+
+make reset
 
 # Удалить неиспользуемые зависимости и добавить недостающие зависимости
+
 go mod tidy
+
+http://localhost:8000/auth/sign-up

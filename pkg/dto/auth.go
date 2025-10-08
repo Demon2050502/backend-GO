@@ -1,7 +1,8 @@
 package dto
 
 type SignUpRequest struct {
-	Name      string  `json:"name" binding:"required"`
+	Firstname string  `json:"firstname"`
+	Lastname  string  `json:"lastname"`
 	Username  string  `json:"username" binding:"required"`
 	Email     string  `json:"email" binding:"required,email"`
 	Phone     *string `json:"phone"`
@@ -14,15 +15,15 @@ type SignUpRequest struct {
 type SignUpResponse struct {
 	Token string `json:"token"`
 	User  struct {
-		ID       int64   `json:"id"`
-		Username string  `json:"username"`
-		Email    string  `json:"email"`
+		ID       int64  `json:"id"`
+		Username string `json:"username"`
+		Email    string `json:"email"`
 	} `json:"user"`
 }
 
 type SignInRequest struct {
-	Email string `json:"email" binding:"required"`
-	Password   string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type SignInResponse struct {
@@ -32,6 +33,5 @@ type SignInResponse struct {
 		Username string  `json:"username"`
 		Email    string  `json:"email"`
 		Balance  float64 `json:"balance"`
-		TypeID   int     `json:"type_id"`
 	} `json:"user"`
 }

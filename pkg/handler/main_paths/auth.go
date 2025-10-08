@@ -1,6 +1,7 @@
 package main_paths
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"regexp"
@@ -29,7 +30,7 @@ func (h *AuthPostgres) SignUp(c *gin.Context) {
 
 	// 1) Валидация входных данных на основе тегов binding в dto.SignUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error(), "message": "Не правильные входные данные"})
 		return
 	}
 
@@ -67,8 +68,8 @@ func (h *AuthPostgres) SignUp(c *gin.Context) {
 	// QueryRowx возвращает одну строку — используем Scan для получения возвращаемых полей.
 	row := h.db.QueryRowx(
 		insertQuery,
-		req.Name,
-		req.Name,
+		req.Firstname,
+		req.Lastname,
 		req.Username,
 		req.Email,
 		req.Phone,       // *string или nil
@@ -86,7 +87,7 @@ func (h *AuthPostgres) SignUp(c *gin.Context) {
 	// Генерация JWT-токена отдельной функцией
 	tokenString, err := auxpath.GenerateToken(newID, req.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate a token", "message": "Попробуйте чуть позже"})
 		return
 	}
 
@@ -99,6 +100,69 @@ func (h *AuthPostgres) SignUp(c *gin.Context) {
 	resp.User.Email = req.Email
 
 	c.JSON(http.StatusCreated, resp)
+}
+
+// SignIn — обработчик входа пользователя.
+func (h *AuthPostgres) SignIn(c *gin.Context) {
+	var req dto.SignInRequest
+
+	// 1) Валидация входных данных на основе тегов binding в dto.SignInRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "недопустимый запрос", "details": err.Error(), "message": "Не правильные входные данные"})
+		return
+	}
+
+	// 2) Найдём пользователя по email и получим хеш пароля и другие поля
+	var (
+		id           int64
+		username     string
+		email        string
+		passwordHash string
+		balance      float64
+	)
+
+	query := `
+		SELECT id, username, email, password_hash, COALESCE(balance, 0) as balance
+		FROM users
+		WHERE email = $1
+		LIMIT 1
+	`
+
+	row := h.db.QueryRowx(query, req.Email)
+	if err := row.Scan(&id, &username, &email, &passwordHash, &balance); err != nil {
+		if err == sql.ErrNoRows {
+			// не нашли пользователя
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials", "message": "Неверный логин"})
+			return
+		}
+		// другая ошибка БД
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user", "details": err.Error()})
+		return
+	}
+
+	// 3) Сравнение хеша пароля
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+		// неверный пароль
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials", "message": "Неверный пароль"})
+		return
+	}
+
+	// 4) Генерация JWT-токена (та же функция, что и в SignUp)
+	tokenString, err := auxpath.GenerateToken(id, username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate a token", "message": "Попробуйте чуть позже"})
+		return
+	}
+
+	// 5) Формируем ответ по dto.SignInResponse
+	var resp dto.SignInResponse
+	resp.Token = tokenString
+	resp.User.ID = id
+	resp.User.Username = username
+	resp.User.Email = email
+	resp.User.Balance = balance
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func validatePassword(pwd string) error {

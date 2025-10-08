@@ -29,7 +29,12 @@ func (h *Handler)InitRoutes() *gin.Engine {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/sign-up", h.MainHandler.Authorization.SignUp)
-		auth.POST("/sign-in", responce)
+		auth.POST("/sign-in", h.MainHandler.Authorization.SignIn)
+	}
+
+	user := router.Group("/user")
+	{
+		user.POST("/chan", responce) // не сделанное
 	}
 
 	test := router.Group("/test")
