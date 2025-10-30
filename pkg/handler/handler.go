@@ -34,7 +34,8 @@ func (h *Handler)InitRoutes() *gin.Engine {
 
 	user := router.Group("/user")
 	{
-		user.POST("/chan", responce) // не сделанное
+		user.PATCH("/chang", h.MainHandler.User.UpdateUser)
+		user.GET("/get-profile", h.MainHandler.User.GetProfile)
 	}
 
 	test := router.Group("/test")

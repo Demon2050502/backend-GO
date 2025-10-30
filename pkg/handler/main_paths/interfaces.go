@@ -10,18 +10,19 @@ type Authorization interface {
 	SignIn(c *gin.Context)
 }
 
-type ChangUser interface {
-
+type User interface {
+	UpdateUser(*gin.Context)
+	GetProfile(*gin.Context)
 }
 
 type MainHandler struct {
 	Authorization
-	ChangUser
+	User
 }
 
 func NewMainPaths(db *sqlx.DB) *MainHandler {
 	return &MainHandler{
 		Authorization: NewAuthPostgres(db),
-		ChangUser: NewChangUser(db),
+		User: NewUser(db),
 	}
 }
