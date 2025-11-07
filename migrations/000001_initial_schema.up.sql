@@ -165,5 +165,8 @@ CREATE TABLE IF NOT EXISTS attachments (
   uploaded_at TIMESTAMPTZ DEFAULT now()
 );
 
+INSERT INTO user_types (id, name) VALUES 
+(0, 'freelancer'),
+(1, 'customer');
 
-INSERT INTO user_types (id, name) VALUES (0, 'zero-type');
+INSERT INTO categories (id, name, parent_id) VALUES (0, 'not-categorie', 0);

@@ -38,6 +38,11 @@ func (h *Handler)InitRoutes() *gin.Engine {
 		user.GET("/get-profile", h.MainHandler.User.GetProfile)
 	}
 
+	orders := router.Group("/orders")
+	{
+		orders.POST("/create-order", h.MainHandler.Orders.CreateOrder)
+	}
+
 	test := router.Group("/test")
 	{
 		test.POST("/status", responce)

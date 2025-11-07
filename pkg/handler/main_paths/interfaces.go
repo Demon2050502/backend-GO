@@ -15,14 +15,20 @@ type User interface {
 	GetProfile(*gin.Context)
 }
 
+type Orders interface {
+	CreateOrder(*gin.Context)
+}
+
 type MainHandler struct {
 	Authorization
 	User
+	Orders
 }
 
 func NewMainPaths(db *sqlx.DB) *MainHandler {
 	return &MainHandler{
 		Authorization: NewAuthPostgres(db),
 		User: NewUser(db),
+		Orders: NewOrderPostgres(db),
 	}
 }
