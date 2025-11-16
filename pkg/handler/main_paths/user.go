@@ -363,6 +363,10 @@ func (h *ConUserBD) GetPortfolios(c *gin.Context) {
 		return
 	}
 
+	
+		fmt.Println(portfolios)
+
+
 	for i := range portfolios {
 		qFiles := `
             SELECT id, file_url, file_type, title, description
@@ -380,6 +384,8 @@ func (h *ConUserBD) GetPortfolios(c *gin.Context) {
 			return
 		}
 		portfolios[i].Files = files
+
+		
 	}
 
 	c.JSON(http.StatusOK, dto.GetPortfoliosResponse{
