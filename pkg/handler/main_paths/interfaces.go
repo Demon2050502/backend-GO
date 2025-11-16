@@ -13,6 +13,8 @@ type Authorization interface {
 type User interface {
 	UpdateUser(*gin.Context)
 	GetProfile(*gin.Context)
+	CreatePortfolio(*gin.Context)
+	GetPortfolios(*gin.Context)
 }
 
 type Orders interface {

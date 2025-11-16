@@ -36,6 +36,12 @@ func (h *Handler)InitRoutes() *gin.Engine {
 	{
 		user.PATCH("/chang", h.MainHandler.User.UpdateUser)
 		user.GET("/get-profile", h.MainHandler.User.GetProfile)
+
+		portfolio := user.Group("/portfolio")
+		{
+			portfolio.POST("/create-portfolio", h.MainHandler.User.CreatePortfolio)
+			portfolio.GET("/get-portfolios", h.MainHandler.User.GetPortfolios)
+		}
 	}
 
 	orders := router.Group("/orders")

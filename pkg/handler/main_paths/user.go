@@ -14,15 +14,15 @@ import (
 )
 
 
-type ConDataBase struct {
+type ConUserBD struct {
 	db *sqlx.DB
 }
 
-func NewUser(db *sqlx.DB) *ConDataBase {
-	return &ConDataBase{db: db}
+func NewUser(db *sqlx.DB) *ConUserBD {
+	return &ConUserBD{db: db}
 }
 
-func (h *ConDataBase) GetProfile(c *gin.Context) {
+func (h *ConUserBD) GetProfile(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	token := c.Query("token")
@@ -91,7 +91,7 @@ func (h *ConDataBase) GetProfile(c *gin.Context) {
 }
 
 // UpdateUser — обработчик обновления данных пользователя
-func (h *ConDataBase) UpdateUser(c *gin.Context) {
+func (h *ConUserBD) UpdateUser(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// 1) Парсим тело запроса
@@ -221,7 +221,174 @@ func (h *ConDataBase) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func (h *ConDataBase) CheckUserUniqueFields(
+func (h *ConUserBD) CreatePortfolio(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var req dto.CreatePortfolioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	userID, err := auxpath.GetUserIDFromToken(req.Token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "invalid token",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	tx, err := h.db.BeginTxx(ctx, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "db error",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// Создаём портфолио
+	var portfolioID int64
+
+	isPublic := true
+	if req.IsPublic != nil {
+		isPublic = *req.IsPublic
+	}
+
+	queryPortfolio := `
+		INSERT INTO portfolios (user_id, title, description, category_id, is_public)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`
+
+	err = tx.GetContext(ctx, &portfolioID, queryPortfolio,
+		userID,
+		req.Title,
+		req.Description,
+		req.CategoryID,
+		isPublic,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "db error",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Добавляем файлы
+	if len(req.Files) > 0 {
+		queryFile := `
+			INSERT INTO portfolio_files (portfolio_id, file_url, file_type, title, description)
+			VALUES ($1, $2, $3, $4, $5)
+		`
+
+		for _, f := range req.Files {
+			_, err = tx.ExecContext(ctx, queryFile,
+				portfolioID,
+				f.FileURL,
+				f.FileType,
+				f.Title,
+				f.Description,
+			)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "db error",
+					"details": err.Error(),
+				})
+				return
+			}
+		}
+	}
+
+	// Коммитим изменения
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "db error",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.CreatePortfolioResponse{
+		ID: portfolioID,
+	})
+}
+
+func (h *ConUserBD) GetPortfolios(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var body struct{ Token string `json:"token"` }
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		_ = c.ShouldBindJSON(&body)
+		token = body.Token
+	}
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		return
+	}
+
+	userID, err := auxpath.GetUserIDFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	query := `
+        SELECT id, title, description, category_id, is_public
+        FROM portfolios
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+    `
+	var portfolios []dto.PortfolioItem
+	err = h.db.SelectContext(ctx, &portfolios, query, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "db error",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	for i := range portfolios {
+		qFiles := `
+            SELECT id, file_url, file_type, title, description
+            FROM portfolio_files
+            WHERE portfolio_id = $1
+            ORDER BY uploaded_at DESC
+        `
+		var files []dto.PortfolioFile
+		err := h.db.SelectContext(ctx, &files, qFiles, portfolios[i].ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "file fetch error",
+				"details": err.Error(),
+			})
+			return
+		}
+		portfolios[i].Files = files
+	}
+
+	c.JSON(http.StatusOK, dto.GetPortfoliosResponse{
+		Portfolios: portfolios,
+	})
+}
+
+
+func (h *ConUserBD) CheckUserUniqueFields(
 	ctx context.Context,
 	userID int64,
 	newUsername *string,
