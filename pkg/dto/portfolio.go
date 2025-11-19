@@ -40,3 +40,20 @@ type PortfolioItem struct {
 type GetPortfoliosResponse struct {
 	Portfolios []PortfolioItem `json:"portfolios"`
 }
+
+type UpdatePortfolioRequest struct {
+	Token       string                 `json:"token" binding:"required"`
+	PortfolioID int                    `json:"portfolio_id"`
+	Title       *string                `json:"title"`
+	Description *string                `json:"description"`
+	CategoryID  *int                   `json:"category_id" db:"category_id"`
+	IsPublic    *bool                  `json:"is_public" db:"is_public"`
+	Files       *[]UpdatePortfolioFile `json:"files"`
+}
+
+type UpdatePortfolioFile struct {
+	FileURL     string  `json:"file_url" db:"file_url" binding:"required"`
+	FileType    *string `json:"file_type" db:"file_type"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+}

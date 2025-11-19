@@ -1,0 +1,18 @@
+meta {
+  name: Sign In User
+  type: http
+}
+
+request {
+  url: http://localhost:8000/auth/sign-in
+  method: POST
+
+  body: json({
+    "email": "user1@mail.com",
+    "password": "password123"
+  })
+}
+
+script {
+  setEnv("TOKEN", response.body.token)
+}

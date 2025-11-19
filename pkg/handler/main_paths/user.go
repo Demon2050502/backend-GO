@@ -90,7 +90,6 @@ func (h *ConUserBD) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, profile)
 }
 
-// UpdateUser — обработчик обновления данных пользователя
 func (h *ConUserBD) UpdateUser(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -391,6 +390,125 @@ func (h *ConUserBD) GetPortfolios(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.GetPortfoliosResponse{
 		Portfolios: portfolios,
 	})
+}
+
+func (h *ConUserBD) UpdatePortfolio(c *gin.Context) {
+    ctx := c.Request.Context()
+
+    // Parse JSON
+    var req dto.UpdatePortfolioRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "error":   "invalid request",
+            "details": err.Error(),
+        })
+        return
+    }
+
+    userID, err := auxpath.GetUserIDFromToken(req.Token)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "error":   "invalid token",
+            "details": err.Error(),
+        })
+        return
+    }
+
+    // Check portfolio exists and belongs to the user
+    err = h.db.GetContext(ctx, &userID,
+        `SELECT user_id FROM portfolios WHERE id = $1`,
+        req.PortfolioID,
+    )
+    if err == sql.ErrNoRows {
+        c.JSON(http.StatusNotFound, gin.H{"error": "portfolio not found"})
+        return
+    }
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "db error", "details": err.Error()})
+        return
+    }
+
+    // Start transaction
+    tx, err := h.db.BeginTxx(ctx, nil)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "transaction error", "details": err.Error()})
+        return
+    }
+
+    // Build UPDATE query
+    setParts := []string{}
+    args := []interface{}{}
+    arg := 1
+
+    add := func(field string, value interface{}) {
+        setParts = append(setParts, fmt.Sprintf("%s = $%d", field, arg))
+        args = append(args, value)
+        arg++
+    }
+
+    if req.Title != nil {
+        add("title", *req.Title)
+    }
+    if req.Description != nil {
+        add("description", *req.Description)
+    }
+    if req.CategoryID != nil {
+        add("category_id", *req.CategoryID)
+    }
+    if req.IsPublic != nil {
+        add("is_public", *req.IsPublic)
+    }
+
+    if len(setParts) > 0 {
+        setParts = append(setParts, "updated_at = NOW()")
+        args = append(args, req.PortfolioID)
+
+        query := fmt.Sprintf(`
+            UPDATE portfolios
+            SET %s
+            WHERE id = $%d
+        `, strings.Join(setParts, ", "), arg)
+
+        if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+            tx.Rollback()
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed", "details": err.Error()})
+            return
+        }
+    }
+
+    // ---- Update Files (if included) ----
+    if req.Files != nil {
+        _, err := tx.ExecContext(ctx,
+            `DELETE FROM portfolio_files WHERE portfolio_id = $1`,
+            req.PortfolioID,
+        )
+        if err != nil {
+            tx.Rollback()
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear files", "details": err.Error()})
+            return
+        }
+
+        for _, f := range *req.Files {
+            _, err = tx.ExecContext(ctx,
+                `INSERT INTO portfolio_files (portfolio_id, file_url, file_type, title, description)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                req.PortfolioID, f.FileURL, f.FileType, f.Title, f.Description,
+            )
+            if err != nil {
+                tx.Rollback()
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "file insert error", "details": err.Error()})
+                return
+            }
+        }
+    }
+
+    // Commit transaction
+    if err := tx.Commit(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "commit error", "details": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"status": "portfolio updated"})
 }
 
 

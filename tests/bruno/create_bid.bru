@@ -1,0 +1,17 @@
+meta {
+  name: Create Bid
+  type: http
+}
+
+request {
+  url: http://localhost:8000/orders/create-bid
+  method: POST
+
+  body: json({
+    "token": "{{TOKEN}}",
+    "order_id": {{ORDER_ID}},
+    "portfolio_id": 1,
+    "proposal": "I can do it!",
+    "price": 150
+  })
+}

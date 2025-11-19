@@ -1,0 +1,12 @@
+meta {
+  name: Get Profile
+  type: http
+}
+
+request {
+  url: http://localhost:8000/user/get-profile
+  method: GET
+  headers {
+    Authorization: Bearer {{TOKEN}}
+  }
+}

@@ -20,8 +20,6 @@ db-start: ## Start PostgreSQL database container
 	 -e POSTGRES_PASSWORD='$(DB_PASSWORD)' \
 	 -e POSTGRES_DB='$(DB_NAME)' \
 	 -p $(DB_PORT):5432 -d --rm postgres
-	@sleep 3
-	@echo "Database started on port $(DB_PORT)"
 
 db-stop: ## Stop PostgreSQL database container
 	@echo "Stopping database..."
@@ -48,15 +46,9 @@ run: ## Run the application
 	@echo "Starting application..."
 	go run cmd/main.go
 
-build: ## Build the application
-	@echo "Building application..."
-	go build -o bin/main cmd/main.go
 
 dev: db-start migrate-up run ## Start database, run migrations and start application
 
-clean: db-stop ## Clean up (stop database)
-	@echo "Cleaning up..."
-	rm -rf bin/
 
 test: ## Run tests
 	@echo "Running tests..."

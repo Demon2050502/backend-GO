@@ -15,3 +15,22 @@ type CreateOrderRequest struct {
 type CreateOrderResponse struct {
 	ID int64 `json:"id"`
 }
+
+type CreateBidRequest struct {
+	Token       string  `json:"token" binding:"required"`
+	OrderID     int64   `json:"order_id" binding:"required" db:"order_id"`
+	PortfolioID int64   `json:"portfolio_id" binding:"required" db:"portfolio_id"`
+	Proposal    string  `json:"proposal"`
+	Price       float64 `json:"price" binding:"required"`
+}
+
+type BidResponse struct {
+	ID          int64   `json:"id"`
+	OrderID     int64   `json:"order_id" db:"order_id"`
+	ExecutorID  int64   `json:"executor_id" db:"executor_id"`
+	PortfolioID int64   `json:"portfolio_id" db:"portfolio_id"`
+	Proposal    string  `json:"proposal"`
+	Price       float64 `json:"price"`
+	Status      string  `json:"status"`
+	CreatedAt   string  `json:"created_at" db:"created_at"`
+}

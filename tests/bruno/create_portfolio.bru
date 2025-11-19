@@ -1,0 +1,25 @@
+meta {
+  name: Create Portfolio
+  type: http
+}
+
+request {
+  url: http://localhost:8000/user/portfolio/create-portfolio
+  method: POST
+
+  body: json({
+    "token": "{{TOKEN}}",
+    "title": "My Portfolio {{random 9999}}",
+    "description": "Some description",
+    "category_id": 2,
+    "is_public": true,
+    "files": [
+      {
+        "file_url": "https://picsum.photos/200",
+        "file_type": "image",
+        "title": "Example file",
+        "description": "Sample file"
+      }
+    ]
+  })
+}

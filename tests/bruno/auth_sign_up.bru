@@ -1,0 +1,17 @@
+meta {
+  name: Sign Up
+  type: http
+}
+
+request {
+  url: http://localhost:8000/auth/sign-up
+  method: POST
+
+  body: json({
+    "firstname": "John",
+    "lastname": "Doe",
+    "username": "user_{{random 10}}",
+    "email": "user{{random 10}}@mail.com",
+    "password": "password123"
+  })
+}

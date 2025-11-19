@@ -1,0 +1,152 @@
+meta {
+  name: Everything Full Test
+  type: http
+}
+
+env {
+  TOKEN: ""
+  USER_EMAIL: "user{{random 10000}}@mail.com"
+  USER_USERNAME: "user_{{random 10000}}"
+}
+
+# ============================================
+# 1) SIGN UP
+# ============================================
+
+request "sign_up" {
+  url: http://localhost:8000/auth/sign-up
+  method: POST
+
+  body: json({
+    "firstname": "Test",
+    "lastname": "User",
+    "username": "{{USER_USERNAME}}",
+    "email": "{{USER_EMAIL}}",
+    "password": "password123"
+  })
+}
+
+script "sign_up" {
+  setEnv("TOKEN", response.body.token)
+}
+
+# ============================================
+# 2) SIGN IN (для проверки)
+# ============================================
+
+request "sign_in" {
+  url: http://localhost:8000/auth/sign-in
+  method: POST
+
+  body: json({
+    "email": "{{USER_EMAIL}}",
+    "password": "password123"
+  })
+}
+
+script "sign_in" {
+  setEnv("TOKEN", response.body.token)
+}
+
+# ============================================
+# 3) CREATE PORTFOLIO
+# ============================================
+
+request "create_portfolio" {
+  url: http://localhost:8000/user/portfolio/create-portfolio
+  method: POST
+
+  body: json({
+    "token": "{{TOKEN}}",
+    "title": "Portfolio {{random 10000}}",
+    "description": "Auto created",
+    "category_id": 1,
+    "is_public": true,
+    "files": [
+      {
+        "file_url": "https://picsum.photos/300",
+        "file_type": "image",
+        "title": "Test File",
+        "description": "Generated file"
+      }
+    ]
+  })
+}
+
+script "create_portfolio" {
+  setEnv("PORTFOLIO_ID", response.body.id)
+}
+
+# ============================================
+# 4) MASS CREATE 5 ORDERS
+# ============================================
+
+loop 5 {
+  request "create_order_{{loop.index}}" {
+    url: http://localhost:8000/orders/create-order
+    method: POST
+
+    body: json({
+      "token": "{{TOKEN}}",
+      "title": "Order {{loop.index}}",
+      "description": "Bulk test order",
+      "category_id": 1,
+      "price": 100,
+      "price_max": 200,
+      "time_start": "2025-03-01 10:00:00",
+      "time_end": "2025-03-10 10:00:00",
+      "is_visible": true
+    })
+  }
+
+  script "save_order_{{loop.index}}" {
+    setEnv("ORDER_ID_{{loop.index}}", response.body.id)
+  }
+}
+
+# ============================================
+# 5) MASS CREATE 3 BIDS FOR EACH ORDER
+# ============================================
+
+loop 5 {
+  loop 3 {
+
+    request "bid_order_{{loop.parent.index}}_{{loop.index}}" {
+      url: http://localhost:8000/orders/create-bid
+      method: POST
+
+      body: json({
+        "token": "{{TOKEN}}",
+        "order_id": {{env("ORDER_ID_{{loop.parent.index}}")}},
+        "portfolio_id": {{PORTFOLIO_ID}},
+        "proposal": "Proposal {{loop.index}} for order {{loop.parent.index}}",
+        "price": {{random 50 200}}
+      })
+    }
+
+  }
+}
+
+# ============================================
+# 6) GET PROFILE
+# ============================================
+
+request "get_profile" {
+  url: http://localhost:8000/user/get-profile
+  method: GET
+
+  headers {
+    Authorization: Bearer {{TOKEN}}
+  }
+}
+
+# ============================================
+# 7) GET USER COUNT
+# ============================================
+
+request "user_count" {
+  url: http://localhost:8000/test/count
+  method: POST
+
+  body: json({})
+}
